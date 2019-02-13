@@ -11,7 +11,7 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.Solenoid;
+//import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.TimedRobot;
@@ -30,7 +30,7 @@ import edu.wpi.cscore.CvSource;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.cscore.CvSink;
 */
-import edu.wpi.first.cameraserver.CameraServer;
+//import edu.wpi.first.cameraserver.CameraServer;
 
 
 public class Robot extends TimedRobot 
@@ -40,13 +40,13 @@ public class Robot extends TimedRobot
   private DifferentialDrive m_myRobot;
   private Joystick m_leftStick;
   private Joystick m_rightStick;
-  private Joystick gamecontroller;
+  //private Joystick gamecontroller;
 
 
   Compressor c = new Compressor(0);
-  boolean enabled = c.enabled();
-  boolean pressureSwitch = c.getPressureSwitchValue();
-  double current = c.getCompressorCurrent();
+/// boolean enabled = c.enabled();
+//  boolean pressureSwitch = c.getPressureSwitchValue();
+//  double current = c.getCompressorCurrent();
 
   //not too sure as to what we're going to use these for - Connor//
   DoubleSolenoid FrontLift = new DoubleSolenoid( 0, 1 );
@@ -129,6 +129,127 @@ public class Robot extends TimedRobot
     SmartDashboard.putString( "what" , "RobotInit");     
     SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
     SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
+
+  }
+
+
+  @Override
+  public void autonomousInit() 
+  {
+    super.autonomousInit();
+    SmartDashboard.putString( "what" , "autonomousInit"); 
+  }
+
+
+  @Override
+  public void autonomousPeriodic()
+  {
+    super.autonomousPeriodic();
+    TurnSpeed = m_rightStick.getX();
+    if (TurnSpeed > RobotMaxSpeed)
+    TurnSpeed = RobotMaxSpeed;
+    if (TurnSpeed < -RobotMaxSpeed)
+      TurnSpeed = -RobotMaxSpeed;
+    if ((TurnSpeed < DeadBand) && (TurnSpeed > -DeadBand))
+      TurnSpeed = 0.0;
+
+    DriveSpeed = m_rightStick.getY();
+    if (DriveSpeed > RobotMaxSpeed)
+      DriveSpeed = RobotMaxSpeed;
+    if (DriveSpeed < -RobotMaxSpeed)
+      DriveSpeed = -RobotMaxSpeed;
+    if ((DriveSpeed < DeadBand) &&  (DriveSpeed > -DeadBand)) 
+      DriveSpeed = 0.0;
+
+    WheelIntakeSpeed = m_leftStick.getY();
+    if (WheelIntakeSpeed > WheelIntakeMaxSpeed)
+      WheelIntakeSpeed = WheelIntakeMaxSpeed;
+    if (WheelIntakeSpeed < -WheelIntakeMaxSpeed)
+      WheelIntakeSpeed = -WheelIntakeMaxSpeed;
+    if ((WheelIntakeSpeed < DeadBand) &&  (WheelIntakeSpeed > -DeadBand)) 
+      WheelIntakeSpeed = 0.0;
+
+    if (( MoveRobot_State == 0 ) && ( TurnRobot_State == 0))
+      m_myRobot.arcadeDrive(-DriveSpeed, TurnSpeed);
+      
+    SmartDashboard.putNumber("Left Speed", TurnSpeed);
+    SmartDashboard.putNumber("Right Speed", DriveSpeed);
+    SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
+    SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
+
+    /* If RightStick's button 3 is pressed, move forward - Connor */
+    if ( m_rightStick.getRawButton(3) == true ) 
+    {
+      if ( MoveRobot_State == 0 ) 
+      {
+        MoveRobot_State = 1;
+        Forward = true;
+        MoveRobot_TimeToMove = 50;
+        MoveRobot_Counter = 0;
+        MoveRobot_Speed = 0.5;
+        SmartDashboard.putString( "what" , "MoveRobot FWD");
+      }
+    }
+
+    /* If RightStick's button 2 is pressed, move backwards - Connor */
+    if ( m_rightStick.getRawButton(2) == true ) 
+    {
+      if ( MoveRobot_State == 0 ) 
+      {
+        MoveRobot_State = 1;
+        Forward = false;
+        MoveRobot_TimeToMove = 50;
+        MoveRobot_Counter = 0;
+        MoveRobot_Speed = 0.5;
+        SmartDashboard.putString( "what" , "MoveRobot REV");
+      }
+    }
+
+    WheelIntakeMotor.set(WheelIntakeSpeed);
+    SmartDashboard.putNumber("WheelIntake", WheelIntakeSpeed);
+
+    Move_Robot();   // Process Move Robot request 
+
+    /*Rotates Robot counter clockwise if RightStick's button 4 is pressed - Connor*/
+    if ( m_rightStick.getRawButton(4) == true ) 
+    {
+      if ( TurnRobot_State == 0 ) 
+      {
+        TurnRobot_State = 1;
+        CW = false;
+        TurnRobot_TimeToMove = 100;
+        TurnRobot_Counter = 0;
+        TurnRobot_Speed = 0.5;
+        SmartDashboard.putString( "what" , "TurnRobot CW");
+      }
+    }
+
+    /*Rotates Robot clockwise if RightStick's button 5 is pressed - Connor*/
+    if ( m_rightStick.getRawButton(5) == true ) 
+    {
+      if ( TurnRobot_State == 0 ) 
+      {
+        TurnRobot_State = 1;
+        CW = true;
+        TurnRobot_TimeToMove = 100;
+        TurnRobot_Counter = 0;
+        TurnRobot_Speed = 0.5;
+        SmartDashboard.putString( "what" , "TurnRobot CCW");
+      }
+    }
+    Turn_Robot();    // Process Turn Robot request 
+
+    /* Control Winch                                               */
+    /*                                                             */
+    if ( m_leftStick.getRawButton(3) == true ) 
+       m_Winch.set( WinchMaxSpeed );
+    else
+    {
+      if ( m_leftStick.getRawButton(2) == true )
+        m_Winch.set( -WinchMaxSpeed );
+      else
+        m_Winch.set( 0.0 );
+    }
 
   }
 
