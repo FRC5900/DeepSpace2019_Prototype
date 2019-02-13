@@ -12,6 +12,7 @@ package frc.robot;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.SpeedController;
@@ -48,6 +49,11 @@ public class Robot extends TimedRobot
   double current = c.getCompressorCurrent();
 
   //not too sure as to what we're going to use these for - Connor//
+  DoubleSolenoid FrontLift = new DoubleSolenoid( 0, 1 );
+  DoubleSolenoid RearLift = new DoubleSolenoid( 2, 3 );
+  DoubleSolenoid HatchEject = new DoubleSolenoid( 4, 5 );
+
+  /*
   Solenoid Valve1 = new Solenoid(0);
   Solenoid Valve2 = new Solenoid(1);
   Solenoid Valve3 = new Solenoid(2);
@@ -56,10 +62,12 @@ public class Robot extends TimedRobot
   Solenoid Valve6 = new Solenoid(5);
   Solenoid Valve7 = new Solenoid(6);
   Solenoid Valve8 = new Solenoid(7);
+  */
 
   double TurnSpeed;
   double DriveSpeed;
   double WheelIntakeSpeed;
+  double WinchSpeed;
 
   /* For Moving forward or reverse for number of seconds */
   int MoveRobot_State;
@@ -78,12 +86,14 @@ public class Robot extends TimedRobot
   /* For limiting speed of robot and removing voltage drift from joy stick */
   double RobotMaxSpeed = 0.75;
   double WheelIntakeMaxSpeed = 0.75;
+  double WinchMaxSpeed = 0.75;
   double DeadBand = 0.15;
 
   SpeedControllerGroup m_Left;
   SpeedControllerGroup m_Right;
+  SpeedControllerGroup m_Winch;
+
       
-  
   //original drive that worked was spark 1 was on 2 and 2 was on 1
   @Override
   public void robotInit() 
@@ -93,15 +103,16 @@ public class Robot extends TimedRobot
     /* Right drive requires two motors at channel 2, channel 3            */
     m_Left = new SpeedControllerGroup( new Spark(0), new Spark(1));
     m_Right = new SpeedControllerGroup( new Spark(2), new Spark(3));
+    m_Winch = new SpeedControllerGroup( new Spark(4), new Spark(5));
     m_myRobot = new DifferentialDrive(m_Left, m_Right);
     
-    c.setClosedLoopControl(false);
+    c.setClosedLoopControl(true);
     //set to true when ready ^
     //m_visionThread = new Thread(() -> {
     //UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
     //camera.setResolution(640, 480);
     
-    WheelIntakeMotor = new Spark(4);
+    WheelIntakeMotor = new Spark(6);   
     /* Good job Connor */
     /*The order in which you plug in the joysticks, determines the port (0 = right, 1 = left) - Connor*/
     m_leftStick = new Joystick(0);
@@ -110,18 +121,25 @@ public class Robot extends TimedRobot
     MoveRobot_State = 0;
     MoveRobot_Speed = 0.0;
     TurnRobot_State = 0;
-    SmartDashboard.putString( "what" , "RobotInit");     
 
+    FrontLift.set( DoubleSolenoid.Value.kOff );
+    RearLift.set( DoubleSolenoid.Value.kOff );
+    HatchEject.set( DoubleSolenoid.Value.kOff );
+
+    SmartDashboard.putString( "what" , "RobotInit");     
     SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
     SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
+
   }
+
 
   @Override
-  public void teleopInit() {
+  public void teleopInit() 
+  {
     super.teleopInit();
-
     SmartDashboard.putString( "what" , "teleopInit"); 
   }
+
 
   @Override
   public void teleopPeriodic() 
@@ -158,7 +176,7 @@ public class Robot extends TimedRobot
     SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
     SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
 
-    /* Button 3 has it move forward - Connor */
+    /* If RightStick's button 3 is pressed, move forward - Connor */
     if ( m_rightStick.getRawButton(3) == true ) 
     {
       if ( MoveRobot_State == 0 ) 
@@ -172,7 +190,7 @@ public class Robot extends TimedRobot
       }
     }
 
-    /* Button 2 has it move backwards - Connor */
+    /* If RightStick's button 2 is pressed, move backwards - Connor */
     if ( m_rightStick.getRawButton(2) == true ) 
     {
       if ( MoveRobot_State == 0 ) 
@@ -189,9 +207,9 @@ public class Robot extends TimedRobot
     WheelIntakeMotor.set(WheelIntakeSpeed);
     SmartDashboard.putNumber("WheelIntake", WheelIntakeSpeed);
 
-    Move_Robot();
+    Move_Robot();   // Process Move Robot request 
 
-    /*Rotates Robot counter clockwise - Connor*/
+    /*Rotates Robot counter clockwise if RightStick's button 4 is pressed - Connor*/
     if ( m_rightStick.getRawButton(4) == true ) 
     {
       if ( TurnRobot_State == 0 ) 
@@ -205,7 +223,7 @@ public class Robot extends TimedRobot
       }
     }
 
-    /*Rotates Robot clockwise - Connor*/
+    /*Rotates Robot clockwise if RightStick's button 5 is pressed - Connor*/
     if ( m_rightStick.getRawButton(5) == true ) 
     {
       if ( TurnRobot_State == 0 ) 
@@ -218,9 +236,23 @@ public class Robot extends TimedRobot
         SmartDashboard.putString( "what" , "TurnRobot CCW");
       }
     }
-    Turn_Robot();    
+    Turn_Robot();    // Process Turn Robot request 
+
+    /* Control Winch                                               */
+    /*                                                             */
+    if ( m_leftStick.getRawButton(3) == true ) 
+       m_Winch.set( WinchMaxSpeed );
+    else
+    {
+      if ( m_leftStick.getRawButton(2) == true )
+        m_Winch.set( -WinchMaxSpeed );
+      else
+        m_Winch.set( 0.0 );
+    }
   }
-      
+ 
+  /* Move_Robot() - will move robot FWD or REV for given duration  */
+  /*                                                               */
   public void Move_Robot() 
   {
     switch (MoveRobot_State) 
@@ -245,6 +277,9 @@ public class Robot extends TimedRobot
     }
   } 
  
+
+  /* Turn_Robot() - will turn robot CW or CCW for given duration  */
+  /*                                                              */
   public void Turn_Robot() 
   {
     switch (TurnRobot_State) 
@@ -268,16 +303,41 @@ public class Robot extends TimedRobot
     }
   }
  
+
   @Override
-  public void testInit() {
+  public void testInit() 
+  {
     super.testInit();
     SmartDashboard.putString( "what" , "testInit"); 
   }
+
+
   @Override
   public void testPeriodic() 
   {
-    m_Left.set(m_leftStick.getX());
-    m_Right.set(m_rightStick.getX());
+    m_Left.set(m_leftStick.getY());
+    m_Right.set(m_rightStick.getY());
+
+
+
+    if( m_rightStick.getRawButton(3) )
+      FrontLift.set( DoubleSolenoid.Value.kForward );
+    else
+      FrontLift.set( DoubleSolenoid.Value.kReverse );
+
+    if( m_rightStick.getRawButton(2) )
+      RearLift.set( DoubleSolenoid.Value.kForward );
+    else
+      RearLift.set( DoubleSolenoid.Value.kReverse );
+
+    if( m_rightStick.getRawButton(1) )
+      HatchEject.set( DoubleSolenoid.Value.kForward );
+    else
+      HatchEject.set( DoubleSolenoid.Value.kReverse );
+  
+
   }
 
 }
+
+
