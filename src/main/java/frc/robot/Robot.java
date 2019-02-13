@@ -4,7 +4,8 @@
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
 /*                                                                            */
-/* 1-29-19 Waiting for chassis design, adding compressor, solenoids           */                                     
+/* 1-29-19 Waiting for chassis design, adding compressor, solenoids           */  
+/* 2-12-19 Testing Github                                                     */                                   
 /*----------------------------------------------------------------------------*/
 package frc.robot;
 
@@ -38,6 +39,7 @@ public class Robot extends TimedRobot
   private DifferentialDrive m_myRobot;
   private Joystick m_leftStick;
   private Joystick m_rightStick;
+  private Joystick gamecontroller;
 
 
   Compressor c = new Compressor(0);
@@ -76,22 +78,23 @@ public class Robot extends TimedRobot
   /* For limiting speed of robot and removing voltage drift from joy stick */
   double RobotMaxSpeed = 0.75;
   double WheelIntakeMaxSpeed = 0.75;
-  double DeadBand = 0.1;
+  double DeadBand = 0.15;
+
+  SpeedControllerGroup m_Left;
+  SpeedControllerGroup m_Right;
+      
   
   //original drive that worked was spark 1 was on 2 and 2 was on 1
   @Override
   public void robotInit() 
   {
     /*Spark is the type of motor driver, so it is what we call it - Connor*/
-    Spark m_frontLeft = new Spark(0);
-    Spark m_rearLeft = new Spark(1);
-    SpeedControllerGroup m_Left = new SpeedControllerGroup(m_frontLeft, m_rearLeft);
-
-    Spark m_frontRight = new Spark(2);
-    Spark m_rearRight = new Spark(3);
-    SpeedControllerGroup m_Right = new SpeedControllerGroup(m_frontRight, m_rearRight);
-    
+    /* Left drive requires two motors at channel 0, channel 1             */
+    /* Right drive requires two motors at channel 2, channel 3            */
+    m_Left = new SpeedControllerGroup( new Spark(0), new Spark(1));
+    m_Right = new SpeedControllerGroup( new Spark(2), new Spark(3));
     m_myRobot = new DifferentialDrive(m_Left, m_Right);
+    
     c.setClosedLoopControl(false);
     //set to true when ready ^
     //m_visionThread = new Thread(() -> {
@@ -107,9 +110,17 @@ public class Robot extends TimedRobot
     MoveRobot_State = 0;
     MoveRobot_Speed = 0.0;
     TurnRobot_State = 0;
-    SmartDashboard.putString( "what" , "RobotInit");
+    SmartDashboard.putString( "what" , "RobotInit");     
+
     SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
     SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
+  }
+
+  @Override
+  public void teleopInit() {
+    super.teleopInit();
+
+    SmartDashboard.putString( "what" , "teleopInit"); 
   }
 
   @Override
@@ -258,9 +269,15 @@ public class Robot extends TimedRobot
   }
  
   @Override
+  public void testInit() {
+    super.testInit();
+    SmartDashboard.putString( "what" , "testInit"); 
+  }
+  @Override
   public void testPeriodic() 
   {
-
+    m_Left.set(m_leftStick.getX());
+    m_Right.set(m_rightStick.getX());
   }
 
 }
