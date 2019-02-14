@@ -36,7 +36,7 @@ import edu.wpi.cscore.CvSink;
 public class Robot extends TimedRobot 
 {
 
-  private SpeedController WheelIntakeMotor;
+  private SpeedController BallIntakeMotor;
   private DifferentialDrive m_myRobot;
   private Joystick m_leftStick;
   private Joystick m_rightStick;
@@ -66,7 +66,7 @@ public class Robot extends TimedRobot
 
   double TurnSpeed;
   double DriveSpeed;
-  double WheelIntakeSpeed;
+  double BallIntakeSpeed;
   double WinchSpeed;
 
   /* For Moving forward or reverse for number of seconds */
@@ -85,7 +85,7 @@ public class Robot extends TimedRobot
   
   /* For limiting speed of robot and removing voltage drift from joy stick */
   double RobotMaxSpeed = 0.75;
-  double WheelIntakeMaxSpeed = 0.75;
+  double BallIntakeMaxSpeed = 0.75;
   double WinchMaxSpeed = 0.75;
   double DeadBand = 0.15;
 
@@ -111,8 +111,8 @@ public class Robot extends TimedRobot
     //m_visionThread = new Thread(() -> {
     //UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
     //camera.setResolution(640, 480);
-    
-    WheelIntakeMotor = new Spark(6);   
+
+    BallIntakeMotor = new Spark(6);   
     /* Good job Connor */
     /*The order in which you plug in the joysticks, determines the port (0 = right, 1 = left) - Connor*/
     m_leftStick = new Joystick(0);
@@ -161,13 +161,13 @@ public class Robot extends TimedRobot
     if ((DriveSpeed < DeadBand) &&  (DriveSpeed > -DeadBand)) 
       DriveSpeed = 0.0;
 
-    WheelIntakeSpeed = m_leftStick.getY();
-    if (WheelIntakeSpeed > WheelIntakeMaxSpeed)
-      WheelIntakeSpeed = WheelIntakeMaxSpeed;
-    if (WheelIntakeSpeed < -WheelIntakeMaxSpeed)
-      WheelIntakeSpeed = -WheelIntakeMaxSpeed;
-    if ((WheelIntakeSpeed < DeadBand) &&  (WheelIntakeSpeed > -DeadBand)) 
-      WheelIntakeSpeed = 0.0;
+    BallIntakeSpeed = m_leftStick.getY();
+    if (BallIntakeSpeed > BallIntakeMaxSpeed)
+      BallIntakeSpeed = BallIntakeMaxSpeed;
+    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
+      BallIntakeSpeed = -BallIntakeMaxSpeed;
+    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
+      BallIntakeSpeed = 0.0;
 
     if (( MoveRobot_State == 0 ) && ( TurnRobot_State == 0))
       m_myRobot.arcadeDrive(-DriveSpeed, TurnSpeed);
@@ -205,8 +205,8 @@ public class Robot extends TimedRobot
       }
     }
 
-    WheelIntakeMotor.set(WheelIntakeSpeed);
-    SmartDashboard.putNumber("WheelIntake", WheelIntakeSpeed);
+    BallIntakeMotor.set(BallIntakeSpeed);
+    SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
 
     Move_Robot();   // Process Move Robot request 
 
@@ -281,13 +281,13 @@ public class Robot extends TimedRobot
     if ((DriveSpeed < DeadBand) &&  (DriveSpeed > -DeadBand)) 
       DriveSpeed = 0.0;
 
-    WheelIntakeSpeed = m_leftStick.getY();
-    if (WheelIntakeSpeed > WheelIntakeMaxSpeed)
-      WheelIntakeSpeed = WheelIntakeMaxSpeed;
-    if (WheelIntakeSpeed < -WheelIntakeMaxSpeed)
-      WheelIntakeSpeed = -WheelIntakeMaxSpeed;
-    if ((WheelIntakeSpeed < DeadBand) &&  (WheelIntakeSpeed > -DeadBand)) 
-      WheelIntakeSpeed = 0.0;
+    BallIntakeSpeed = m_leftStick.getY();
+    if (BallIntakeSpeed > BallIntakeMaxSpeed)
+      BallIntakeSpeed = BallIntakeMaxSpeed;
+    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
+      BallIntakeSpeed = -BallIntakeMaxSpeed;
+    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
+      BallIntakeSpeed = 0.0;
 
     if (( MoveRobot_State == 0 ) && ( TurnRobot_State == 0))
       m_myRobot.arcadeDrive(-DriveSpeed, TurnSpeed);
@@ -325,8 +325,8 @@ public class Robot extends TimedRobot
       }
     }
 
-    WheelIntakeMotor.set(WheelIntakeSpeed);
-    SmartDashboard.putNumber("WheelIntake", WheelIntakeSpeed);
+    BallIntakeMotor.set(BallIntakeSpeed);
+    SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
 
     Move_Robot();   // Process Move Robot request 
 
@@ -370,6 +370,21 @@ public class Robot extends TimedRobot
       else
         m_Winch.set( 0.0 );
     }
+
+    if( m_leftStick.getRawButton(4) )
+      FrontLift.set( DoubleSolenoid.Value.kForward );
+    else
+      FrontLift.set( DoubleSolenoid.Value.kReverse );
+
+    if( m_leftStick.getRawButton(5) )
+      RearLift.set( DoubleSolenoid.Value.kForward );
+    else
+      RearLift.set( DoubleSolenoid.Value.kReverse );
+
+    if( m_leftStick.getRawButton(1) )
+      HatchEject.set( DoubleSolenoid.Value.kForward );
+    else
+      HatchEject.set( DoubleSolenoid.Value.kReverse );
   }
  
   /* Move_Robot() - will move robot FWD or REV for given duration  */
