@@ -38,7 +38,7 @@ import edu.wpi.first.cameraserver.CameraServer;
 
 public class Robot extends TimedRobot 
 {
-  private SpeedController WheelIntakeMotor;
+  private SpeedController BallIntakeMotor;
   private DifferentialDrive m_myRobot;
   private Joystick m_leftStick;
   private Joystick m_rightStick;
@@ -57,7 +57,7 @@ public class Robot extends TimedRobot
 
   double TurnSpeed;
   double DriveSpeed;
-  double WheelIntakeSpeed;
+  double BallIntakeSpeed;
   double WinchSpeed;
 
   /* For Moving forward or reverse for number of seconds */
@@ -86,7 +86,7 @@ public class Robot extends TimedRobot
 
   /* For limiting speed of robot and removing voltage drift from joy stick */
   double RobotMaxSpeed = 0.75;
-  double WheelIntakeMaxSpeed = 1.0;
+  double BallIntakeMaxSpeed = 1.0;
   double WinchMaxSpeed = 0.75;
   double DeadBand = 0.15;
   double JogSpeed = 0.25;
@@ -117,7 +117,7 @@ public class Robot extends TimedRobot
     camera.setResolution(640, 480);
     */
     
-    WheelIntakeMotor = new Spark(6);   
+    BallIntakeMotor = new Spark(6);   
     /*The order in which you plug in the joysticks, determines the port (0 = right, 1 = left) - Connor*/
     
    
@@ -165,13 +165,13 @@ public class Robot extends TimedRobot
     if ((DriveSpeed < DeadBand) &&  (DriveSpeed > -DeadBand)) 
       DriveSpeed = 0.0;
 
-    WheelIntakeSpeed = m_leftStick.getY();
-    if (WheelIntakeSpeed > WheelIntakeMaxSpeed)
-      WheelIntakeSpeed = WheelIntakeMaxSpeed;
-    if (WheelIntakeSpeed < -WheelIntakeMaxSpeed)
-      WheelIntakeSpeed = -WheelIntakeMaxSpeed;
-    if ((WheelIntakeSpeed < DeadBand) &&  (WheelIntakeSpeed > -DeadBand)) 
-      WheelIntakeSpeed = 0.0;
+    BallIntakeSpeed = m_leftStick.getY();
+    if (BallIntakeSpeed > BallIntakeMaxSpeed)
+      BallIntakeSpeed = BallIntakeMaxSpeed;
+    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
+      BallIntakeSpeed = -BallIntakeMaxSpeed;
+    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
+      BallIntakeSpeed = 0.0;
 
     if (( MoveRobot_State == 0 ) && ( TurnRobot_State == 0))
       m_myRobot.arcadeDrive(-DriveSpeed, TurnSpeed);
@@ -209,8 +209,8 @@ public class Robot extends TimedRobot
       }
     }
 
-    WheelIntakeMotor.set(WheelIntakeSpeed);
-    SmartDashboard.putNumber("WheelIntake", WheelIntakeSpeed);
+    BallIntakeMotor.set(BallIntakeSpeed);
+    SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
 
     Move_Robot();   // Process Move Robot request 
 
@@ -294,13 +294,13 @@ public class Robot extends TimedRobot
     if ((DriveSpeed < DeadBand) &&  (DriveSpeed > -DeadBand)) 
       DriveSpeed = 0.0;
 
-    WheelIntakeSpeed = m_leftStick.getY();
-    if (WheelIntakeSpeed > WheelIntakeMaxSpeed)
-      WheelIntakeSpeed = WheelIntakeMaxSpeed;
-    if (WheelIntakeSpeed < -WheelIntakeMaxSpeed)
-      WheelIntakeSpeed = -WheelIntakeMaxSpeed;
-    if ((WheelIntakeSpeed < DeadBand) &&  (WheelIntakeSpeed > -DeadBand)) 
-      WheelIntakeSpeed = 0.0;
+    BallIntakeSpeed = m_leftStick.getY();
+    if (BallIntakeSpeed > BallIntakeMaxSpeed)
+      BallIntakeSpeed = BallIntakeMaxSpeed;
+    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
+      BallIntakeSpeed = -BallIntakeMaxSpeed;
+    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
+      BallIntakeSpeed = 0.0;
 
     if (( MoveRobot_State == 0 ) && ( TurnRobot_State == 0))
       m_myRobot.arcadeDrive(-DriveSpeed, TurnSpeed);
@@ -337,8 +337,8 @@ public class Robot extends TimedRobot
       }
     }
    
-    WheelIntakeMotor.set(WheelIntakeSpeed);
-    SmartDashboard.putNumber("WheelIntake", WheelIntakeSpeed);
+    BallIntakeMotor.set(BallIntakeSpeed);
+    SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
 
     Move_Robot();   // Process Move Robot request 
 
