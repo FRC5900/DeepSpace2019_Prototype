@@ -4,12 +4,14 @@
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
 /*                                                                            */
+/*                                                                            */
 /* 1-29-19 Waiting for chassis design, adding compressor, solenoids           */  
-/* 2-12-19 Testing Github                                                     */                                   
+/* 2-12-19 Testing Github                                                     */   
+/* Left Joystick at USB Port 0                                                */  
+/* Right Joystick at USB Port 1                                               */                              
 /*----------------------------------------------------------------------------*/
 package frc.robot;
-/*PORT 0= RIGHT JOYSTICK---------------->
-PORT 1= LEFT JOYSTICK----------------->*/
+
 //Code list
 //02-16-19 scrimmage--Worked
 import edu.wpi.first.cameraserver.CameraServer;
@@ -18,7 +20,6 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -37,12 +38,10 @@ import edu.wpi.first.cameraserver.CameraServer;
 
 public class Robot extends TimedRobot 
 {
-
   private SpeedController WheelIntakeMotor;
   private DifferentialDrive m_myRobot;
   private Joystick m_leftStick;
   private Joystick m_rightStick;
-  
 
   Compressor c = new Compressor(0);
  // boolean enabled = c.enabled();
@@ -53,9 +52,8 @@ public class Robot extends TimedRobot
   DoubleSolenoid FrontLift = new DoubleSolenoid( 1, 0 );
   DoubleSolenoid RearLift = new DoubleSolenoid( 3, 2 );
   DoubleSolenoid HatchEject = new DoubleSolenoid( 4, 5 );
-
-  
-  
+  DoubleSolenoid TieFighter = new DoubleSolenoid( 6, 7);
+    
 
   double TurnSpeed;
   double DriveSpeed;
@@ -103,16 +101,17 @@ public class Robot extends TimedRobot
   public void robotInit() 
   {
     
-    /*Spark is the type of motor driver, so it is what we call it - Connor*/
-    /* Left drive requires two motors at channel 0, channel 1             */
-    /* Right drive requires two moto rs at channel 2, channel 3            */
+    /* Spark is the type of motor driver, so it is what we call it - Connor */
+    /* Left drive requires two motors at channel 0, channel 1               */
+    /* Right drive requires two moto rs at channel 2, channel 3             */
     m_Left = new SpeedControllerGroup( new Spark(0), new Spark(1));
     m_Right = new SpeedControllerGroup( new Spark(2), new Spark(3));
     m_Winch = new SpeedControllerGroup( new Spark(4), new Spark(5));
     m_myRobot = new DifferentialDrive(m_Left, m_Right);
     CameraServer.getInstance().startAutomaticCapture();
     c.setClosedLoopControl(true);
-    //set to true when ready ^
+    
+
     /*m_visionThread = new Thread(() -> {
     UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
     camera.setResolution(640, 480);
@@ -120,6 +119,8 @@ public class Robot extends TimedRobot
     
     WheelIntakeMotor = new Spark(6);   
     /*The order in which you plug in the joysticks, determines the port (0 = right, 1 = left) - Connor*/
+    
+   
     m_leftStick = new Joystick(0);
     m_rightStick = new Joystick(1);
 
@@ -373,11 +374,11 @@ public class Robot extends TimedRobot
     /* Control Winch                                               */
     /*                                                             */
     if ( m_leftStick.getRawButton(3) == true ) 
-       m_Winch.set( WinchMaxSpeed );
+       m_Winch.set( -WinchMaxSpeed );
     else
     {
       if ( m_leftStick.getRawButton(2) == true )
-        m_Winch.set( -WinchMaxSpeed );
+        m_Winch.set( WinchMaxSpeed );
       else
         m_Winch.set( 0.0 );
     }
@@ -387,6 +388,11 @@ public class Robot extends TimedRobot
       HatchEject.set( DoubleSolenoid.Value.kForward );
     else
       HatchEject.set( DoubleSolenoid.Value.kReverse );
+
+    if( m_leftStick.getRawButton(8) )
+      TieFighter.set( DoubleSolenoid.Value.kForward );
+    else
+      TieFighter.set( DoubleSolenoid.Value.kReverse );
 
     Lifts_Control();
   }
@@ -548,10 +554,13 @@ public class Robot extends TimedRobot
   {
     if (m_leftStick.getRawButton(9) == true)   // Stop Sequence 
     {
-      m_myRobot.arcadeDrive(0.0, 0.0);
-      AutoLift_SaveState = AutoLift_State;
-      SmartDashboard.putString( "AutoLift" , "Suspending Lift");
-      AutoLift_State = 100;
+      if( AutoLift_State < 100 )
+      {
+        m_myRobot.arcadeDrive(0.0, 0.0);
+        AutoLift_SaveState = AutoLift_State;
+        AutoLift_State = 100;
+        SmartDashboard.putString( "AutoLift" , "Suspending Lift");
+      }  
     }
 
     switch (AutoLift_State)
@@ -575,6 +584,7 @@ public class Robot extends TimedRobot
           AutoLift_TargetCount = 25;
           AutoLift_Counter = 0;
           m_myRobot.tankDrive(0.25, 0.25);
+          SmartDashboard.putString( "AutoLift" , "Move Forward at 25% Speed"); 
         }
         break;
 
@@ -594,10 +604,10 @@ public class Robot extends TimedRobot
         if (++AutoLift_Counter > AutoLift_TargetCount)
         {
           RearLift.set( DoubleSolenoid.Value.kForward );
-          SmartDashboard.putString( "AutoLift" , "Extend RearLift"); 
           AutoLift_State = 4;
           AutoLift_TargetCount = 25;
           AutoLift_Counter = 0;
+          SmartDashboard.putString( "AutoLift" , "Extend RearLift"); 
         }
         break;
 
@@ -608,6 +618,7 @@ public class Robot extends TimedRobot
           AutoLift_TargetCount = 25;
           AutoLift_Counter = 0;
           m_myRobot.tankDrive(0.25, 0.25);
+          SmartDashboard.putString( "AutoLift" , "Move Forward at 25% Speed"); 
         }
         break;
 
@@ -619,6 +630,7 @@ public class Robot extends TimedRobot
           AutoLift_Counter = 0;
           m_myRobot.tankDrive(0.0, 0.0);
           RearLift.set ( DoubleSolenoid.Value.kReverse );
+          SmartDashboard.putString( "AutoLift" , "Retract RearLift");
         }
         break;
 
@@ -629,38 +641,38 @@ public class Robot extends TimedRobot
           AutoLift_TargetCount = 0;
           AutoLift_Counter = 0;
           m_myRobot.tankDrive(0.0, 0.0);
+          FrontLift.set ( DoubleSolenoid.Value.kReverse );
           RearLift.set ( DoubleSolenoid.Value.kReverse );
+          SmartDashboard.putString( "AutoLift" , "AutoLift Complete");
         }
         break;
     
-      case 7: //"Idle"
+      case 7: // Auto Lift Complete, just idle here
         break;
 
       case 100: 
         if (m_leftStick.getRawButton(9) == false)   // Stop Sequence 
-         {
+        {
            m_myRobot.arcadeDrive(0.0, 0.0);
-           AutoLift_State = 100;
-         }
-         break;
+           AutoLift_State = 101;
+           SmartDashboard.putString( "AutoLift" , "Wait for Resume");
+        }
+        break;
 
       case 101:
         if (m_leftStick.getRawButton(9) == true)   // Resume Sequence 
-         {
+        {
            m_myRobot.arcadeDrive(0.0, 0.0);
-           AutoLift_State = AutoLift_SaveState ;
-         }  
-         break;
+           AutoLift_State = AutoLift_SaveState;
+           SmartDashboard.putString( "AutoLift" , "Resume AutoLift");
+        }  
+        break;
 
       default:
         AutoLift_State = 0;
         break;
     }
   }
-
-
-
-
 }
 
 
