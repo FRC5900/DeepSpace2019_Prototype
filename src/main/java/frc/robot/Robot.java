@@ -118,6 +118,13 @@ public class Robot extends TimedRobot
     */
     
     BallIntakeMotor = new Spark(6);   
+    //m_visionThread = new Thread(() -> {
+    //UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
+    //camera.setResolution(640, 480);
+
+    BallIntakeMotor = new Spark(6);   
+    /* Good job Connor */
+>>>>>>> 7fddf415f20f8ce41e72ac51966c5e632339101a
     /*The order in which you plug in the joysticks, determines the port (0 = right, 1 = left) - Connor*/
     
    
@@ -336,7 +343,11 @@ public class Robot extends TimedRobot
         SmartDashboard.putString( "what" , "MoveRobot REV");
       }
     }
+<<<<<<< HEAD
    
+=======
+
+>>>>>>> 7fddf415f20f8ce41e72ac51966c5e632339101a
     BallIntakeMotor.set(BallIntakeSpeed);
     SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
 
@@ -383,11 +394,24 @@ public class Robot extends TimedRobot
         m_Winch.set( 0.0 );
     }
 
+<<<<<<< HEAD
+=======
+    if( m_leftStick.getRawButton(4) )
+      FrontLift.set( DoubleSolenoid.Value.kForward );
+    else
+      FrontLift.set( DoubleSolenoid.Value.kReverse );
+
+    if( m_leftStick.getRawButton(5) )
+      RearLift.set( DoubleSolenoid.Value.kForward );
+    else
+      RearLift.set( DoubleSolenoid.Value.kReverse );
+>>>>>>> 7fddf415f20f8ce41e72ac51966c5e632339101a
 
     if( m_leftStick.getRawButton(1) )
       HatchEject.set( DoubleSolenoid.Value.kForward );
     else
       HatchEject.set( DoubleSolenoid.Value.kReverse );
+<<<<<<< HEAD
 
     if( m_leftStick.getRawButton(8) )
       TieFighter.set( DoubleSolenoid.Value.kForward );
@@ -395,6 +419,8 @@ public class Robot extends TimedRobot
       TieFighter.set( DoubleSolenoid.Value.kReverse );
 
     Lifts_Control();
+=======
+>>>>>>> 7fddf415f20f8ce41e72ac51966c5e632339101a
   }
  
   /* Move_Robot() - will move robot FWD or REV for given duration  */
