@@ -17,14 +17,19 @@ package frc.robot;
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Solenoid;
+
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.Preferences;
 
+
+import edu.wpi.first.wpilibj.AnalogInput;
+//CODE FOR DALTON COMPETITION 03/08/19---Gage.
 
 //Extra camera imports to test ---Gage
 /*import org.opencv.core.Mat;
@@ -42,6 +47,11 @@ public class Robot extends TimedRobot
   private DifferentialDrive m_myRobot;
   private Joystick m_leftStick;
   private Joystick m_rightStick;
+  AnalogInput TankPressure = new AnalogInput(0);
+
+  private Double Min_PressureVoltage = 2.3;
+  double PressureVolts;
+  Preferences prefs;
 
   Compressor c = new Compressor(0);
  // boolean enabled = c.enabled();
@@ -49,12 +59,11 @@ public class Robot extends TimedRobot
  // double current = c.getCompressorCurrent();
 
   
-  DoubleSolenoid FrontLift = new DoubleSolenoid( 1, 0 );
-  DoubleSolenoid RearLift = new DoubleSolenoid( 3, 2 );
-  DoubleSolenoid HatchEject = new DoubleSolenoid( 4, 5 );
-  DoubleSolenoid TieFighter = new DoubleSolenoid( 6, 7);
+  Solenoid Front_Lift = new Solenoid(0);
+  Solenoid Rear_Lift = new Solenoid(1);
+  Solenoid Hatch_Eject = new Solenoid(2);
+  Solenoid Ball_Grab = new Solenoid(3);
     
-
   double TurnSpeed;
   double DriveSpeed;
   double BallIntakeSpeed;
@@ -91,6 +100,7 @@ public class Robot extends TimedRobot
   double DeadBand = 0.15;
   double JogSpeed = 0.25;
   double NormalSpeed = 0.75;
+  int TimeToMoveToBaseLine;
 
   SpeedControllerGroup m_Left;
   SpeedControllerGroup m_Right;
@@ -111,6 +121,14 @@ public class Robot extends TimedRobot
     CameraServer.getInstance().startAutomaticCapture();
     c.setClosedLoopControl(true);
     
+    RobotMaxSpeed = prefs.getDouble("RobotMaxSpeed", 0.75);
+    BallIntakeMaxSpeed = prefs.getDouble("BallIntakeMaxSpeed", 1.0);
+    WinchMaxSpeed = prefs.getDouble("WinchMaxSpeed", 0.75);
+    DeadBand = prefs.getDouble("DeadBand", 0.15);
+    JogSpeed = prefs.getDouble("JogSpeed", 0.25);
+    NormalSpeed = prefs.getDouble("NormalSpeed", 0.75);
+    TimeToMoveToBaseLine = prefs.getInt("TimeToMoveToBaseLine", 50);
+    Min_PressureVoltage = prefs.getDouble("Min_PressureVoltage", 2.3);
 
     /*m_visionThread = new Thread(() -> {
     UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
@@ -126,135 +144,50 @@ public class Robot extends TimedRobot
 
     MoveRobot_State = 0;
     MoveRobot_Speed = 0.0;
-    TurnRobot_State = 0;
+    TurnRobot_State = 0;;
     
-    FrontLift.set( DoubleSolenoid.Value.kOff );
-    RearLift.set( DoubleSolenoid.Value.kOff );
-    HatchEject.set( DoubleSolenoid.Value.kOff );
-    
+    Front_Lift.set(false);
+    Rear_Lift.set(false);
+    Hatch_Eject.set(false);
+        
     SmartDashboard.putString("what" , "RobotInit");     
     SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
     SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
     
   }
 
+
+  @Override
+  public void robotPeriodic() 
+  {
+    super.robotPeriodic();
+    PressureVolts = TankPressure.getVoltage();
+    SmartDashboard.putNumber("PressureVolts", PressureVolts);
+  }
+
+
   @Override
   public void autonomousInit() 
   {
     super.autonomousInit();
     SmartDashboard.putString( "what" , "autonomousInit"); 
+    MoveRobot_State = 1;
+    Forward = true;
+    MoveRobot_TimeToMove = TimeToMoveToBaseLine;
+    MoveRobot_Counter = 0;
+    MoveRobot_Speed = 0.5;
+    SmartDashboard.putString( "what" , "MoveToBaseLine");
   }
 
 
   @Override
   public void autonomousPeriodic()
   {
-    TurnSpeed = m_rightStick.getX();
-    if (TurnSpeed > RobotMaxSpeed)
-    TurnSpeed = RobotMaxSpeed;
-    if (TurnSpeed < -RobotMaxSpeed)
-      TurnSpeed = -RobotMaxSpeed;
-    if ((TurnSpeed < DeadBand) && (TurnSpeed > -DeadBand))
-      TurnSpeed = 0.0;
 
-    DriveSpeed = m_rightStick.getY();
-    if (DriveSpeed > RobotMaxSpeed)
-      DriveSpeed = RobotMaxSpeed;
-    if (DriveSpeed < -RobotMaxSpeed)
-      DriveSpeed = -RobotMaxSpeed;
-    if ((DriveSpeed < DeadBand) &&  (DriveSpeed > -DeadBand)) 
-      DriveSpeed = 0.0;
+    Move_Robot();
 
-    BallIntakeSpeed = m_leftStick.getY();
-    if (BallIntakeSpeed > BallIntakeMaxSpeed)
-      BallIntakeSpeed = BallIntakeMaxSpeed;
-    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
-      BallIntakeSpeed = -BallIntakeMaxSpeed;
-    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
-      BallIntakeSpeed = 0.0;
 
-    if (( MoveRobot_State == 0 ) && ( TurnRobot_State == 0))
-      m_myRobot.arcadeDrive(-DriveSpeed, TurnSpeed);
-      
-    SmartDashboard.putNumber("Left Speed", TurnSpeed);
-    SmartDashboard.putNumber("Right Speed", DriveSpeed);
-    SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
-    SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
-  
-    /* If RightStick's button 3 is pressed, move forward - Connor */
-    if ( m_rightStick.getRawButton(3) == true ) 
-    {
-      if ( MoveRobot_State == 0 ) 
-      {
-        MoveRobot_State = 1;
-        Forward = true;
-        MoveRobot_TimeToMove = 50;
-        MoveRobot_Counter = 0;
-        MoveRobot_Speed = 0.5;
-        SmartDashboard.putString( "what" , "MoveRobot FWD");
-      }
-    }
-  
-    /* If RightStick's button 2 is pressed, move backwards - Connor */
-    if ( m_rightStick.getRawButton(2) == true ) 
-    {
-      if ( MoveRobot_State == 0 ) 
-      {
-        MoveRobot_State = 1;
-        Forward = false;
-        MoveRobot_TimeToMove = 50;
-        MoveRobot_Counter = 0;
-        MoveRobot_Speed = 0.5;
-        SmartDashboard.putString( "what" , "MoveRobot REV");
-      }
-    }
-
-    BallIntakeMotor.set(BallIntakeSpeed);
-    SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
-
-    Move_Robot();   // Process Move Robot request 
-
-    /*Rotates Robot counter clockwise if RightStick's button 4 is pressed - Connor*/
-    if ( m_rightStick.getRawButton(4) == true ) 
-    {
-      if ( TurnRobot_State == 0 ) 
-      {
-        TurnRobot_State = 1;
-        CW = false;
-        TurnRobot_TimeToMove = 100;
-        TurnRobot_Counter = 0;
-        TurnRobot_Speed = 0.5;
-        SmartDashboard.putString( "what" , "TurnRobot CW");
-      }
-    }
-
-    /*Rotates Robot clockwise if RightStick's button 5 is pressed - Connor*/
-    if ( m_rightStick.getRawButton(5) == true ) 
-    {
-      if ( TurnRobot_State == 0 ) 
-      {
-        TurnRobot_State = 1;
-        CW = true;
-        TurnRobot_TimeToMove = 100;
-        TurnRobot_Counter = 0;
-        TurnRobot_Speed = 0.5;
-        SmartDashboard.putString( "what" , "TurnRobot CCW");
-      }
-    }
-    Turn_Robot();    // Process Turn Robot request 
-
-    /* Control Winch                                               */
-    /*                                                             */
-    if ( m_leftStick.getRawButton(3) == true ) 
-       m_Winch.set( WinchMaxSpeed );
-    else
-    {
-      if ( m_leftStick.getRawButton(2) == true )
-        m_Winch.set( -WinchMaxSpeed );
-      else
-        m_Winch.set( 0.0 );
-    }
-
+   
   }
 
 
@@ -271,11 +204,10 @@ public class Robot extends TimedRobot
   @Override
   public void teleopPeriodic() 
   {
-    if ( FrontLift_State == 2 || RearLift_State == 2 )
+    if (Front_Lift.get() || Rear_Lift.get())                // Set Max Speed to Jog Speed if any lift is extended
       RobotMaxSpeed = JogSpeed;
     else
-      RobotMaxSpeed = NormalSpeed;
-      
+      RobotMaxSpeed = NormalSpeed;    
     SmartDashboard.putNumber( "MaxSpeed" ,RobotMaxSpeed);
 
     TurnSpeed = m_rightStick.getX();
@@ -294,19 +226,13 @@ public class Robot extends TimedRobot
     if ((DriveSpeed < DeadBand) &&  (DriveSpeed > -DeadBand)) 
       DriveSpeed = 0.0;
 
-    BallIntakeSpeed = m_leftStick.getY();
-    if (BallIntakeSpeed > BallIntakeMaxSpeed)
-      BallIntakeSpeed = BallIntakeMaxSpeed;
-    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
-      BallIntakeSpeed = -BallIntakeMaxSpeed;
-    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
-      BallIntakeSpeed = 0.0;
+    
 
     if (( MoveRobot_State == 0 ) && ( TurnRobot_State == 0))
       m_myRobot.arcadeDrive(-DriveSpeed, TurnSpeed);
       
-    SmartDashboard.putNumber("Left Speed", TurnSpeed);
-    SmartDashboard.putNumber("Right Speed", DriveSpeed);
+    SmartDashboard.putNumber("Turn Speed", TurnSpeed);
+    SmartDashboard.putNumber("Drive Speed", DriveSpeed);
     SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
     SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
 
@@ -336,11 +262,22 @@ public class Robot extends TimedRobot
         SmartDashboard.putString( "what" , "MoveRobot REV");
       }
     }
+
+    Move_Robot();   // Process Move Robot request 
+
+    /* Ball Intake Speed Controls                                               */
+    BallIntakeSpeed = m_leftStick.getY();
+    if (BallIntakeSpeed > BallIntakeMaxSpeed)
+      BallIntakeSpeed = BallIntakeMaxSpeed;
+    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
+      BallIntakeSpeed = -BallIntakeMaxSpeed;
+    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
+      BallIntakeSpeed = 0.0;
    
     BallIntakeMotor.set(BallIntakeSpeed);
     SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
 
-    Move_Robot();   // Process Move Robot request 
+    
 
     /*Rotates Robot counter clockwise if RightStick's button 4 is pressed - Connor*/
     if ( m_rightStick.getRawButton(4) == true ) 
@@ -383,16 +320,18 @@ public class Robot extends TimedRobot
         m_Winch.set( 0.0 );
     }
 
-
+    /* Eject Hatch                                                 */
+    /*                                                             */
     if( m_leftStick.getRawButton(1) )
-      HatchEject.set( DoubleSolenoid.Value.kForward );
+      Hatch_Eject.set(true);
     else
-      HatchEject.set( DoubleSolenoid.Value.kReverse );
+      Hatch_Eject.set(false);
 
     if( m_leftStick.getRawButton(8) )
-      TieFighter.set( DoubleSolenoid.Value.kForward );
+      Ball_Grab.set( true );
     else
-      TieFighter.set( DoubleSolenoid.Value.kReverse );
+      Ball_Grab.set(false);
+    
 
     Lifts_Control();
   }
@@ -461,39 +400,29 @@ public class Robot extends TimedRobot
   @Override
   public void testPeriodic() 
   {
+  
     m_Left.set(m_leftStick.getY());
     m_Right.set(m_rightStick.getY());
 
-
-
-    if( m_rightStick.getRawButton(3) )
-      FrontLift.set( DoubleSolenoid.Value.kForward );
-    else
-      FrontLift.set( DoubleSolenoid.Value.kReverse );
-
-    if( m_rightStick.getRawButton(2) )
-      RearLift.set( DoubleSolenoid.Value.kForward );
-    else
-      RearLift.set( DoubleSolenoid.Value.kReverse );
-
-    if( m_rightStick.getRawButton(1) )
-      HatchEject.set( DoubleSolenoid.Value.kForward );
-    else
-      HatchEject.set( DoubleSolenoid.Value.kReverse );
-  
+    Lifts_Control();
 
   }
 
   public void Lifts_Control()
   {
+    
+    
     switch(FrontLift_State)
     {
       case 0:
-        if (m_leftStick.getRawButton(4) == true)
+        if (PressureVolts > Min_PressureVoltage)
         {
-          FrontLift.set( DoubleSolenoid.Value.kForward );
-          SmartDashboard.putString( "lifts F" , "Extend FrontLift"); 
-          FrontLift_State = 1;
+          if (m_leftStick.getRawButton(4) == true)
+          {
+            Front_Lift.set(true);
+            SmartDashboard.putString( "FrontLift" , "FrontLift Extend"); 
+            FrontLift_State = 1;
+          } 
         }
         break;
 
@@ -505,8 +434,8 @@ public class Robot extends TimedRobot
       case 2:
         if (m_leftStick.getRawButton(4) == true)
         {
-          FrontLift.set( DoubleSolenoid.Value.kReverse );
-          SmartDashboard.putString( "lifts F" , "Retract FrontLift");
+          Front_Lift.set(false);
+          SmartDashboard.putString( "FrontLift" , "FrontLift Retract");
           FrontLift_State = 3;
         }
         break;
@@ -518,15 +447,19 @@ public class Robot extends TimedRobot
 
     }
 
+
     switch(RearLift_State)
     {
       case 0:
-        if (m_leftStick.getRawButton(5) == true)
+        if (PressureVolts > Min_PressureVoltage)
         {
-          RearLift.set( DoubleSolenoid.Value.kForward );
-          SmartDashboard.putString( "lifts R" , "Extend RearLift" );
-          RearLift_State = 1;
-        }
+          if (m_leftStick.getRawButton(5) == true)
+          {
+            Rear_Lift.set(true);
+            SmartDashboard.putString( "RearLift" , "RearLift Extend" );
+            RearLift_State = 1;
+          }
+        }  
         break;
 
       case 1:
@@ -537,8 +470,8 @@ public class Robot extends TimedRobot
       case 2:
         if (m_leftStick.getRawButton(5) == true)
         {
-          RearLift.set( DoubleSolenoid.Value.kReverse );
-          SmartDashboard.putString( "lifts R" , "Retract RearLift");
+          Rear_Lift.set(false);
+          SmartDashboard.putString( "RearLift" , "RearLift Retract");
           RearLift_State = 3;
         }
         break;
@@ -571,10 +504,9 @@ public class Robot extends TimedRobot
           AutoLift_State = 1;
           AutoLift_TargetCount = 25;
           AutoLift_Counter = 0;
-          FrontLift.set( DoubleSolenoid.Value.kForward );
+          Front_Lift.set(true);
           SmartDashboard.putString( "AutoLift" , "Extend FrontLift"); 
         }
-       
         break;
 
       case 1: //Waiting for front lift to extend
@@ -595,7 +527,7 @@ public class Robot extends TimedRobot
           AutoLift_State = 3;
           AutoLift_TargetCount = 25;
           AutoLift_Counter = 0;
-          FrontLift.set( DoubleSolenoid.Value.kReverse );
+          Front_Lift.set(false);
           SmartDashboard.putString( "AutoLift" , "Retract FrontLift"); 
         }
         break;
@@ -603,7 +535,7 @@ public class Robot extends TimedRobot
       case 3: //Wating for front lift to retract
         if (++AutoLift_Counter > AutoLift_TargetCount)
         {
-          RearLift.set( DoubleSolenoid.Value.kForward );
+          Rear_Lift.set(true);
           AutoLift_State = 4;
           AutoLift_TargetCount = 25;
           AutoLift_Counter = 0;
@@ -629,7 +561,7 @@ public class Robot extends TimedRobot
           AutoLift_TargetCount = 25;
           AutoLift_Counter = 0;
           m_myRobot.tankDrive(0.0, 0.0);
-          RearLift.set ( DoubleSolenoid.Value.kReverse );
+          Rear_Lift.set(false);
           SmartDashboard.putString( "AutoLift" , "Retract RearLift");
         }
         break;
@@ -641,8 +573,8 @@ public class Robot extends TimedRobot
           AutoLift_TargetCount = 0;
           AutoLift_Counter = 0;
           m_myRobot.tankDrive(0.0, 0.0);
-          FrontLift.set ( DoubleSolenoid.Value.kReverse );
-          RearLift.set ( DoubleSolenoid.Value.kReverse );
+          Front_Lift.set(false);
+          Rear_Lift.set(false);
           SmartDashboard.putString( "AutoLift" , "AutoLift Complete");
         }
         break;
@@ -673,6 +605,9 @@ public class Robot extends TimedRobot
         break;
     }
   }
+
+
+
 }
 
 
