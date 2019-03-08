@@ -12,13 +12,10 @@
 /*----------------------------------------------------------------------------*/
 package frc.robot;
 
-//Code list
-//02-16-19 scrimmage--Worked
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Solenoid;
-
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.SpeedController;
@@ -54,11 +51,6 @@ public class Robot extends TimedRobot
   Preferences prefs;
 
   Compressor c = new Compressor(0);
- // boolean enabled = c.enabled();
- // boolean pressureSwitch = c.getPressureSwitchValue();
- // double current = c.getCompressorCurrent();
-
-  
   Solenoid Front_Lift = new Solenoid(0);
   Solenoid Rear_Lift = new Solenoid(1);
   Solenoid Hatch_Eject = new Solenoid(2);
@@ -100,27 +92,31 @@ public class Robot extends TimedRobot
   double DeadBand = 0.15;
   double JogSpeed = 0.25;
   double NormalSpeed = 0.75;
-  int TimeToMoveToBaseLine;
+  int TimeToMoveToBaseLine = 50;
 
+  /* For multi-motor controls                                      */
   SpeedControllerGroup m_Left;
   SpeedControllerGroup m_Right;
   SpeedControllerGroup m_Winch;
 
-  //original drive that worked was spark 1 was on 2 and 2 was on 1
+  
+  /*****************************************************************/
+  /* robotInit() -                                                 */
+  /*   Left drive requires two motors at channel 0, channel 1      */
+  /*   Right drive requires two moto rs at channel 2, channel 3    */
+  /*****************************************************************/   
   @Override
   public void robotInit() 
-  {
-    
-    /* Spark is the type of motor driver, so it is what we call it - Connor */
-    /* Left drive requires two motors at channel 0, channel 1               */
-    /* Right drive requires two moto rs at channel 2, channel 3             */
+  {  
     m_Left = new SpeedControllerGroup( new Spark(0), new Spark(1));
     m_Right = new SpeedControllerGroup( new Spark(2), new Spark(3));
     m_Winch = new SpeedControllerGroup( new Spark(4), new Spark(5));
     m_myRobot = new DifferentialDrive(m_Left, m_Right);
+
     CameraServer.getInstance().startAutomaticCapture();
     c.setClosedLoopControl(true);
-    
+
+  /*  
     RobotMaxSpeed = prefs.getDouble("RobotMaxSpeed", 0.75);
     BallIntakeMaxSpeed = prefs.getDouble("BallIntakeMaxSpeed", 1.0);
     WinchMaxSpeed = prefs.getDouble("WinchMaxSpeed", 0.75);
@@ -129,6 +125,7 @@ public class Robot extends TimedRobot
     NormalSpeed = prefs.getDouble("NormalSpeed", 0.75);
     TimeToMoveToBaseLine = prefs.getInt("TimeToMoveToBaseLine", 50);
     Min_PressureVoltage = prefs.getDouble("Min_PressureVoltage", 2.3);
+*/
 
     /*m_visionThread = new Thread(() -> {
     UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
@@ -136,9 +133,7 @@ public class Robot extends TimedRobot
     */
     
     BallIntakeMotor = new Spark(6);   
-    /*The order in which you plug in the joysticks, determines the port (0 = right, 1 = left) - Connor*/
-    
-   
+ 
     m_leftStick = new Joystick(0);
     m_rightStick = new Joystick(1);
 
@@ -149,6 +144,7 @@ public class Robot extends TimedRobot
     Front_Lift.set(false);
     Rear_Lift.set(false);
     Hatch_Eject.set(false);
+    Ball_Grab.set(false);
         
     SmartDashboard.putString("what" , "RobotInit");     
     SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
@@ -157,6 +153,10 @@ public class Robot extends TimedRobot
   }
 
 
+  /*****************************************************************/
+  /* robotPeriodic() -                                             */
+  /*   called every 20msec regardless of mode.                     */
+  /*****************************************************************/     
   @Override
   public void robotPeriodic() 
   {
@@ -191,6 +191,9 @@ public class Robot extends TimedRobot
   }
 
 
+  /*****************************************************************/
+  /* teleopInit()) -                                               */
+  /*****************************************************************/   
   @Override
   public void teleopInit() 
   {
@@ -201,6 +204,9 @@ public class Robot extends TimedRobot
   }
 
 
+  /*****************************************************************/
+  /* teleopPeriodic() -                                            */
+  /*****************************************************************/ 
   @Override
   public void teleopPeriodic() 
   {
@@ -208,8 +214,7 @@ public class Robot extends TimedRobot
       RobotMaxSpeed = JogSpeed;
     else
       RobotMaxSpeed = NormalSpeed;    
-    SmartDashboard.putNumber( "MaxSpeed" ,RobotMaxSpeed);
-
+    
     TurnSpeed = m_rightStick.getX();
     if (TurnSpeed > RobotMaxSpeed)
       TurnSpeed = RobotMaxSpeed;
@@ -224,9 +229,7 @@ public class Robot extends TimedRobot
     if (DriveSpeed < -RobotMaxSpeed)
       DriveSpeed = -RobotMaxSpeed;
     if ((DriveSpeed < DeadBand) &&  (DriveSpeed > -DeadBand)) 
-      DriveSpeed = 0.0;
-
-    
+      DriveSpeed = 0.0;  
 
     if (( MoveRobot_State == 0 ) && ( TurnRobot_State == 0))
       m_myRobot.arcadeDrive(-DriveSpeed, TurnSpeed);
@@ -235,7 +238,22 @@ public class Robot extends TimedRobot
     SmartDashboard.putNumber("Drive Speed", DriveSpeed);
     SmartDashboard.putNumber("MoveRobotState", MoveRobot_State);
     SmartDashboard.putNumber("TurnRobotState", TurnRobot_State);
+    SmartDashboard.putNumber("MaxSpeed",RobotMaxSpeed);
+    
+    BallInTake_Controls();
+    Move_Robot();   
+    Turn_Robot();    
+    Winch_Controls();
+    TieFighter_Controls();                                                  
+    Lifts_Control();
+  }
 
+
+  /*****************************************************************/
+  /* Move_Robot() - will move robot FWD or REV for given duration  */
+  /*****************************************************************/
+  public void Move_Robot() 
+  {
     /* If RightStick's button 3 is pressed, move forward - Connor */
     if ( m_rightStick.getRawButton(3) == true ) 
     {
@@ -249,6 +267,7 @@ public class Robot extends TimedRobot
         SmartDashboard.putString( "what" , "MoveRobot FWD");
       }
     }
+
     /* If RightStick's button 2 is pressed, move backwards - Connor */
     if ( m_rightStick.getRawButton(2) == true ) 
     {
@@ -263,85 +282,11 @@ public class Robot extends TimedRobot
       }
     }
 
-    Move_Robot();   // Process Move Robot request 
-
-    /* Ball Intake Speed Controls                                               */
-    BallIntakeSpeed = m_leftStick.getY();
-    if (BallIntakeSpeed > BallIntakeMaxSpeed)
-      BallIntakeSpeed = BallIntakeMaxSpeed;
-    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
-      BallIntakeSpeed = -BallIntakeMaxSpeed;
-    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
-      BallIntakeSpeed = 0.0;
-   
-    BallIntakeMotor.set(BallIntakeSpeed);
-    SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
-
-    
-
-    /*Rotates Robot counter clockwise if RightStick's button 4 is pressed - Connor*/
-    if ( m_rightStick.getRawButton(4) == true ) 
-    {
-      if ( TurnRobot_State == 0 ) 
-      {
-        TurnRobot_State = 1;
-        CW = false;
-        TurnRobot_TimeToMove = 100;
-        TurnRobot_Counter = 0;
-        TurnRobot_Speed = 0.5;
-        SmartDashboard.putString( "what" , "TurnRobot CW");
-      }
-    }
-
-    /*Rotates Robot clockwise if RightStick's button 5 is pressed - Connor*/
-    if ( m_rightStick.getRawButton(5) == true ) 
-    {
-      if ( TurnRobot_State == 0 ) 
-      {
-        TurnRobot_State = 1;
-        CW = true;
-        TurnRobot_TimeToMove = 100;
-        TurnRobot_Counter = 0;
-        TurnRobot_Speed = 0.5;
-        SmartDashboard.putString( "what" , "TurnRobot CCW");
-      }
-    }
-    Turn_Robot();    // Process Turn Robot request 
-
-    /* Control Winch                                               */
-    /*                                                             */
-    if ( m_leftStick.getRawButton(3) == true ) 
-       m_Winch.set( -WinchMaxSpeed );
-    else
-    {
-      if ( m_leftStick.getRawButton(2) == true )
-        m_Winch.set( WinchMaxSpeed );
-      else
-        m_Winch.set( 0.0 );
-    }
-
-    /* Eject Hatch                                                 */
-    /*                                                             */
-    if( m_leftStick.getRawButton(1) )
-      Hatch_Eject.set(true);
-    else
-      Hatch_Eject.set(false);
-
-    if( m_leftStick.getRawButton(8) )
-      Ball_Grab.set( true );
-    else
-      Ball_Grab.set(false);
-    
-
-    Lifts_Control();
-  }
- 
-  /* Move_Robot() - will move robot FWD or REV for given duration  */
-  /*                                                               */
-  public void Move_Robot() 
-  {
     switch (MoveRobot_State) 
     {
+      case 0:  // Idle
+        break;
+
       case 1:
         if (MoveRobot_Counter > MoveRobot_TimeToMove) 
         {
@@ -359,16 +304,52 @@ public class Robot extends TimedRobot
           MoveRobot_Counter++;
         }
         break;
+
+      default:
+        m_myRobot.tankDrive(0.0, 0.0);
+        MoveRobot_Speed = 0.0;
+        MoveRobot_State = 0;
+        break;
     }
   } 
  
 
-  /* Turn_Robot() - will turn robot CW or CCW for given duration  */
-  /*                                                              */
+  /*****************************************************************/
+  /* Turn_Robot() - will move robot FWD or REV for given duration  */
+  /*****************************************************************/                                                            
   public void Turn_Robot() 
-  {
+  {   
+    if ( m_rightStick.getRawButton(4) == true )  // Rotate CCW if button 4 pressed
+    {
+      if ( TurnRobot_State == 0 ) 
+      {
+        TurnRobot_State = 1;
+        CW = false;
+        TurnRobot_TimeToMove = 100;
+        TurnRobot_Counter = 0;
+        TurnRobot_Speed = 0.5;
+        SmartDashboard.putString( "what" , "TurnRobot CW");
+      }
+    }
+
+    if ( m_rightStick.getRawButton(5) == true )  // Rotate CW if button 5 pressed
+    {
+      if ( TurnRobot_State == 0 ) 
+      {
+        TurnRobot_State = 1;
+        CW = true;
+        TurnRobot_TimeToMove = 100;
+        TurnRobot_Counter = 0;
+        TurnRobot_Speed = 0.5;
+        SmartDashboard.putString( "what" , "TurnRobot CCW");
+      }
+    }
+
     switch (TurnRobot_State) 
     {
+      case 0:  // idle
+        break;
+
       case 1:
         if (TurnRobot_Counter > TurnRobot_TimeToMove) 
         {
@@ -385,10 +366,20 @@ public class Robot extends TimedRobot
             m_myRobot.tankDrive(-TurnRobot_Speed, TurnRobot_Speed);
           TurnRobot_Counter++;
         }
+        break;
+      
+      default:  
+        m_myRobot.tankDrive(0.0, 0.0);
+        TurnRobot_Speed = 0.0;
+        TurnRobot_State = 0;
+        break;
     }
   }
  
 
+  /*****************************************************************/
+  /* testInit() - initialization for test mode                     */
+  /*****************************************************************/   
   @Override
   public void testInit() 
   {
@@ -397,21 +388,60 @@ public class Robot extends TimedRobot
   }
 
 
+  /*****************************************************************/
+  /* testPeriodic() - called every 20msec in test mode             */
+  /*****************************************************************/   
   @Override
   public void testPeriodic() 
   {
-  
     m_Left.set(m_leftStick.getY());
     m_Right.set(m_rightStick.getY());
-
     Lifts_Control();
-
   }
 
+
+  /*****************************************************************/
+  /* BallInTake_Controls() - read leftstick to get speed           */
+  /*****************************************************************/     
+  public void BallInTake_Controls()
+  {
+    BallIntakeSpeed = m_leftStick.getY();
+    if (BallIntakeSpeed > BallIntakeMaxSpeed)
+      BallIntakeSpeed = BallIntakeMaxSpeed;
+    if (BallIntakeSpeed < -BallIntakeMaxSpeed)
+      BallIntakeSpeed = -BallIntakeMaxSpeed;
+    if ((BallIntakeSpeed < DeadBand) &&  (BallIntakeSpeed > -DeadBand)) 
+      BallIntakeSpeed = 0.0;
+   
+    BallIntakeMotor.set(BallIntakeSpeed);
+    SmartDashboard.putNumber("BallIntake", BallIntakeSpeed);
+  }
+
+
+  /*****************************************************************/
+  /* Winch_Controls() - read leftstick button 3 to move up and     */
+  /*                    leftstick button 2 to move down.           */
+  /*****************************************************************/   
+  public void Winch_Controls()
+  {
+    if ( m_leftStick.getRawButton(3) == true ) 
+       m_Winch.set( -WinchMaxSpeed );
+    else
+    {
+      if ( m_leftStick.getRawButton(2) == true )
+        m_Winch.set( WinchMaxSpeed );
+      else
+        m_Winch.set( 0.0 );
+    }
+  }
+
+  /*****************************************************************/
+  /* Lifts_Control() - read leftstick button 4 to raise / lower    */
+  /*                   front lift.  read leftstick button 5 to     */
+  /*                   raise and lower rear lift.                  */
+  /*****************************************************************/   
   public void Lifts_Control()
   {
-    
-    
     switch(FrontLift_State)
     {
       case 0:
@@ -443,10 +473,13 @@ public class Robot extends TimedRobot
       case 3:
         if (m_leftStick.getRawButton(4) == false)
           FrontLift_State = 0;
-        break;  
-
+        break;
+        
+      default:
+        Front_Lift.set(false);
+        FrontLift_State = 0;
+        break;
     }
-
 
     switch(RearLift_State)
     {
@@ -480,9 +513,40 @@ public class Robot extends TimedRobot
         if (m_leftStick.getRawButton(5) == false)
           RearLift_State = 0;
         break;  
+      
+      default:
+        Rear_Lift.set(false);
+        RearLift_State = 0;
+        break;
+
     }
   }
 
+
+  /*****************************************************************/
+  /* TieFighter_Controls() - read leftstick button 1 to eject      */
+  /*                   hatch.                                      */
+  /*                   read leftstick button 8 to grab or release  */
+  /*                   ball.                                       */
+  /*****************************************************************/   
+  public void TieFighter_Controls()
+  {
+    if( m_leftStick.getRawButton(1) )
+      Hatch_Eject.set(true);
+    else
+      Hatch_Eject.set(false);
+
+    if( m_leftStick.getRawButton(8) )
+      Ball_Grab.set(true);
+    else
+      Ball_Grab.set(false);
+
+  }
+
+
+  /*****************************************************************/
+  /* AutoLift_Controller() - automatically climb a step.           */
+  /*****************************************************************/   
   public void AutoLift_Controller()
   {
     if (m_leftStick.getRawButton(9) == true)   // Stop Sequence 
@@ -605,8 +669,6 @@ public class Robot extends TimedRobot
         break;
     }
   }
-
-
 
 }
 
